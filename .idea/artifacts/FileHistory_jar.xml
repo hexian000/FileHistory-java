@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" build-on-make="true" name="FileHistory:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/FileHistory_jar</output-path>
+    <root id="archive" name="FileHistory.jar">
+      <element id="module-output" name="FileHistory" />
+    </root>
+  </artifact>
+</component>
