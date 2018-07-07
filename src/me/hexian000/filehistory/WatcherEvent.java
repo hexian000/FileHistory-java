@@ -4,10 +4,9 @@ class WatcherEvent {
 	static final int EVENT_CREATE = 1;
 	static final int EVENT_DELETE = 2;
 	static final int EVENT_MODIFY = 3;
-
-	private int event;
 	private final String path;
 	long timestamp;
+	private int event;
 
 	WatcherEvent(int event, String path) {
 		this.event = event;

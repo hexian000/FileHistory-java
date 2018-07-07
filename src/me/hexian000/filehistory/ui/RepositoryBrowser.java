@@ -1,11 +1,12 @@
 package me.hexian000.filehistory.ui;
 
-import javafx.application.Application;
 import me.hexian000.filehistory.Repository;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.*;
+import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
 import java.text.DateFormat;
@@ -13,7 +14,6 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
-import java.util.ResourceBundle;
 import java.util.TimeZone;
 
 class RepositoryBrowser extends JDialog {
