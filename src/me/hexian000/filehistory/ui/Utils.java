@@ -1,6 +1,6 @@
 package me.hexian000.filehistory.ui;
 
-import com.sun.istack.internal.NotNull;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
