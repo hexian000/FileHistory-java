@@ -28,7 +28,7 @@ public class Repository implements Consumer<WatcherEvent> {
 	}
 
 	private final BlockingQueue<String> tasks;
-	private final Consumer<String> logger;
+	private final Logger log;
 	private final Thread backupThread;
 	private final String path;
 	private boolean closed = false;
@@ -37,8 +37,8 @@ public class Repository implements Consumer<WatcherEvent> {
 		this(path, null);
 	}
 
-	public Repository(String path, Consumer<String> logger) throws IOException {
-		this.logger = logger;
+	public Repository(String path, Logger logger) throws IOException {
+		log = logger;
 		File repo = new File(path);
 		if (!repo.exists()) {
 			if (!repo.mkdirs()) {
@@ -92,7 +92,7 @@ public class Repository implements Consumer<WatcherEvent> {
 				backup(watcherEvent.getPath());
 			} catch (IOException e) {
 				e.printStackTrace();
-				logError(e.getLocalizedMessage());
+				log.error(e.getLocalizedMessage());
 			}
 			break;
 		}
@@ -138,7 +138,7 @@ public class Repository implements Consumer<WatcherEvent> {
 					if (!m.find()) {
 						final String message = "Non repository file: " + f.getAbsolutePath();
 						System.err.println(message);
-						logWarning(message);
+						log.warning(message);
 						continue;
 					}
 					String name = m.group(1), ext = m.group(3);
@@ -176,7 +176,7 @@ public class Repository implements Consumer<WatcherEvent> {
 		}
 		Files.copy(file.toPath(), repoFile.toPath(),
 				StandardCopyOption.COPY_ATTRIBUTES, StandardCopyOption.REPLACE_EXISTING);
-		logInfo(file.toString() + " -> " + repoPath + "");
+		log.info(file.toString() + " -> " + repoPath + "");
 	}
 
 	public void close() {
@@ -187,24 +187,6 @@ public class Repository implements Consumer<WatcherEvent> {
 				backupThread.join();
 			} catch (InterruptedException ignored) {
 			}
-		}
-	}
-
-	private void logInfo(String message) {
-		if (logger != null) {
-			logger.accept("[INFO ] " + message);
-		}
-	}
-
-	private void logWarning(String message) {
-		if (logger != null) {
-			logger.accept("[WARN ] " + message);
-		}
-	}
-
-	private void logError(String message) {
-		if (logger != null) {
-			logger.accept("[ERROR] " + message);
 		}
 	}
 }

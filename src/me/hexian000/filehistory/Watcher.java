@@ -12,11 +12,11 @@ public class Watcher extends Thread {
 	private final Map<WatchKey, Path> keys = new ConcurrentHashMap<>();
 	private final WatchService watchService;
 	private final Consumer<WatcherEvent> consumer;
-	private final Consumer<String> logger;
+	private final Logger log;
 
-	public Watcher(String path, Consumer<WatcherEvent> consumer, Consumer<String> logger) throws IOException {
+	public Watcher(String path, Consumer<WatcherEvent> consumer, Logger logger) throws IOException {
 		this.consumer = consumer;
-		this.logger = logger;
+		log = logger;
 		watchService = FileSystems.getDefault().newWatchService();
 		Files.walkFileTree(Paths.get(path), new SimpleFileVisitor<Path>() {
 			@Override
@@ -46,6 +46,7 @@ public class Watcher extends Thread {
 			keys.put(key, path);
 		} catch (IOException e) {
 			e.printStackTrace();
+			log.error("Watch failed: " + e.getMessage());
 		}
 	}
 
@@ -69,7 +70,7 @@ public class Watcher extends Thread {
 				String pathStr = path.toAbsolutePath().toString();
 				if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE) {
 					if (new File(pathStr).isDirectory()) {
-						logger.accept("[INFO ] New watch: " + pathStr);
+						log.info("New watch: " + pathStr);
 						register(path);
 					}
 					consumer.accept(new WatcherEvent(WatcherEvent.EVENT_CREATE, pathStr));
@@ -81,7 +82,7 @@ public class Watcher extends Thread {
 			}
 			if (!watchKey.reset()) {
 				keys.remove(watchKey);
-				logger.accept("[INFO ] Unwatch: " + dir.toString());
+				log.info("Unwatch: " + dir.toString());
 			}
 		}
 	}

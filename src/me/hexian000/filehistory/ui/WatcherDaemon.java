@@ -1,6 +1,7 @@
 package me.hexian000.filehistory.ui;
 
 import me.hexian000.filehistory.EventFilter;
+import me.hexian000.filehistory.Logger;
 import me.hexian000.filehistory.Repository;
 import me.hexian000.filehistory.Watcher;
 
@@ -10,7 +11,6 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
-import java.util.function.Consumer;
 
 class WatcherDaemon extends JFrame {
 	private JPanel contentPane;
@@ -81,16 +81,17 @@ class WatcherDaemon extends JFrame {
 		return null;
 	}
 
-	private final Consumer<String> logger = line -> SwingUtilities.invokeLater(() -> {
-		final DefaultListModel<String> listModel = (DefaultListModel<String>) listLog.getModel();
-		if (listModel.size() >= 256) {
-			listModel.removeElementAt(0);
-		}
-		listModel.addElement(line);
-		final int lastIndex = listModel.size() - 1;
-		listLog.setSelectedIndex(lastIndex);
-		listLog.ensureIndexIsVisible(lastIndex);
-	});
+	private final Logger log = new Logger(
+			line -> SwingUtilities.invokeLater(() -> {
+				final DefaultListModel<String> listModel = (DefaultListModel<String>) listLog.getModel();
+				if (listModel.size() >= 256) {
+					listModel.removeElementAt(0);
+				}
+				listModel.addElement(line);
+				final int lastIndex = listModel.size() - 1;
+				listLog.setSelectedIndex(lastIndex);
+				listLog.ensureIndexIsVisible(lastIndex);
+			}));
 
 	private void onStart() {
 		final File watchDir = new File(textFieldWatch.getText());
@@ -103,7 +104,7 @@ class WatcherDaemon extends JFrame {
 
 		Repository r;
 		try {
-			r = new Repository(textFieldRepository.getText(), logger);
+			r = new Repository(textFieldRepository.getText(), log);
 		} catch (IOException e) {
 			e.printStackTrace();
 			JOptionPane.showMessageDialog(this, e.getLocalizedMessage(),
@@ -114,13 +115,13 @@ class WatcherDaemon extends JFrame {
 		EventFilter filter = new EventFilter(repository);
 		Watcher watcher;
 		try {
-			watcher = new Watcher(textFieldWatch.getText(), filter, logger);
+			watcher = new Watcher(textFieldWatch.getText(), filter, log);
 		} catch (Exception e) {
 			e.printStackTrace();
-			logger.accept("[ERROR] Error occurred: " + e.getMessage());
+			log.error("Error occurred: " + e.getMessage());
 			return;
 		}
-		logger.accept("[INFO ] " + watcher.getWatchCount() + " watches created.");
+		log.info(watcher.getWatchCount() + " watches created.");
 
 		watcher.start();
 
