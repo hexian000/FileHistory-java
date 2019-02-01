@@ -2,6 +2,7 @@ package me.hexian000.filehistory;
 
 import java.util.function.Consumer;
 
+@SuppressWarnings("WeakerAccess")
 public class Logger {
 	private final Consumer<String> logger;
 
