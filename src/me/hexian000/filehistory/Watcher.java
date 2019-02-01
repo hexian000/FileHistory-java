@@ -3,55 +3,85 @@ package me.hexian000.filehistory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
-import java.util.List;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 public class Watcher extends Thread {
-	private final Map<String, Watch> watches;
-	private boolean fullyWatched;
+	private final Map<WatchKey, Path> keys = new ConcurrentHashMap<>();
+	private final WatchService watchService;
 	private final Consumer<WatcherEvent> consumer;
+	private final Consumer<String> logger;
 
-	public Watcher(String path, Consumer<WatcherEvent> consumer) {
+	public Watcher(String path, Consumer<WatcherEvent> consumer, Consumer<String> logger) throws IOException {
 		this.consumer = consumer;
-		watches = new ConcurrentHashMap<>();
-		fullyWatched = true;
-		register(path);
+		this.logger = logger;
+		watchService = FileSystems.getDefault().newWatchService();
+		Files.walkFileTree(Paths.get(path), new SimpleFileVisitor<Path>() {
+			@Override
+			public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+				register(dir);
+				return FileVisitResult.CONTINUE;
+			}
+
+			@Override
+			public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+				consumer.accept(new WatcherEvent(WatcherEvent.EVENT_CREATE, file.toAbsolutePath().toString()));
+				return FileVisitResult.CONTINUE;
+			}
+		});
 	}
 
 	public int getWatchCount() {
-		return watches.size();
+		return keys.size();
 	}
 
-	public boolean isFullyWatched() {
-		return fullyWatched;
-	}
-
-	private void register(String path) {
-		Watch watch = new Watch();
-		watch.path = path;
+	private void register(Path path) {
 		try {
-			watch.watchService = FileSystems.getDefault().newWatchService();
-			Paths.get(path).register(watch.watchService,
+			WatchKey key = path.register(watchService,
 					StandardWatchEventKinds.ENTRY_MODIFY,
 					StandardWatchEventKinds.ENTRY_DELETE,
 					StandardWatchEventKinds.ENTRY_CREATE);
-			watches.put(path, watch);
+			keys.put(key, path);
 		} catch (IOException e) {
 			e.printStackTrace();
-			fullyWatched = false;
-			return;
 		}
+	}
 
-		File[] files = new File(path).listFiles();
-		if (files != null) {
-			for (File file : files) {
-				if (file.isDirectory()) {
-					register(file.getAbsolutePath());
-				} else if (file.isFile()) {
-					consumer.accept(new WatcherEvent(WatcherEvent.EVENT_CREATE, file.getAbsolutePath()));
+	private void processEvents() {
+		while (!isInterrupted()) {
+			WatchKey watchKey;
+			try {
+				watchKey = watchService.take();
+			} catch (InterruptedException e) {
+				break;
+			}
+			if (watchKey == null) {
+				continue;
+			}
+			final Path dir = keys.get(watchKey);
+			if (dir == null) {
+				continue;
+			}
+			for (WatchEvent<?> event : watchKey.pollEvents()) {
+				Path path = dir.resolve((Path) event.context());
+				String pathStr = path.toAbsolutePath().toString();
+				if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE) {
+					if (new File(pathStr).isDirectory()) {
+						logger.accept("[INFO ] New watch: " + pathStr);
+						register(path);
+					}
+					consumer.accept(new WatcherEvent(WatcherEvent.EVENT_CREATE, pathStr));
+				} else if (event.kind() == StandardWatchEventKinds.ENTRY_DELETE) {
+					consumer.accept(new WatcherEvent(WatcherEvent.EVENT_DELETE, pathStr));
+				} else if (event.kind() == StandardWatchEventKinds.ENTRY_MODIFY) {
+					consumer.accept(new WatcherEvent(WatcherEvent.EVENT_MODIFY, pathStr));
 				}
+			}
+			if (!watchKey.reset()) {
+				keys.remove(watchKey);
+				logger.accept("[INFO ] Unwatch: " + dir.toString());
 			}
 		}
 	}
@@ -59,53 +89,14 @@ public class Watcher extends Thread {
 	@Override
 	public void run() {
 		try {
-			while (!isInterrupted()) {
-				watches.values().removeIf((watch) -> {
-					WatchKey watchKey = watch.watchService.poll();
-					if (watchKey != null) {
-						List<WatchEvent<?>> watchEvents = watchKey.pollEvents();
-						for (WatchEvent<?> event : watchEvents) {
-							String path = Paths.get(watch.path, event.context().toString()).toString();
-							if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE) {
-								if (new File(path).isDirectory()) {
-									register(path);
-								}
-								consumer.accept(new WatcherEvent(WatcherEvent.EVENT_CREATE, path));
-							} else if (event.kind() == StandardWatchEventKinds.ENTRY_DELETE) {
-								consumer.accept(new WatcherEvent(WatcherEvent.EVENT_DELETE, path));
-							} else if (event.kind() == StandardWatchEventKinds.ENTRY_MODIFY) {
-								consumer.accept(new WatcherEvent(WatcherEvent.EVENT_MODIFY, path));
-							}
-						}
-						if (!watchKey.reset()) {
-							try {
-								watch.watchService.close();
-							} catch (IOException e) {
-								e.printStackTrace();
-							}
-							return true;
-						}
-					}
-					return false;
-				});
-				Thread.sleep(200);
-			}
-		} catch (InterruptedException ignored) {
+			processEvents();
 		} catch (ClosedWatchServiceException e) {
 			e.printStackTrace();
 		} finally {
-			for (Watch watch : watches.values()) {
-				try {
-					watch.watchService.close();
-				} catch (IOException ignored) {
-				}
+			try {
+				watchService.close();
+			} catch (IOException ignored) {
 			}
-			watches.clear();
 		}
-	}
-
-	private class Watch {
-		WatchService watchService;
-		String path;
 	}
 }

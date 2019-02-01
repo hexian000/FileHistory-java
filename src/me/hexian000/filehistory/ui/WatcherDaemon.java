@@ -112,9 +112,13 @@ class WatcherDaemon extends JFrame {
 		}
 		repository = r;
 		EventFilter filter = new EventFilter(repository);
-		Watcher watcher = new Watcher(textFieldWatch.getText(), filter);
-		if (!watcher.isFullyWatched()) {
-			logger.accept("[WARN ] Path is not fully watched.");
+		Watcher watcher;
+		try {
+			watcher = new Watcher(textFieldWatch.getText(), filter, logger);
+		} catch (Exception e) {
+			e.printStackTrace();
+			logger.accept("[ERROR] Error occurred: " + e.getMessage());
+			return;
 		}
 		logger.accept("[INFO ] " + watcher.getWatchCount() + " watches created.");
 
