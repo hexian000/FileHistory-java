@@ -30,6 +30,12 @@ public class Watcher extends Thread {
 				consumer.accept(new WatcherEvent(WatcherEvent.EVENT_CREATE, file.toAbsolutePath().toString()));
 				return FileVisitResult.CONTINUE;
 			}
+
+			@Override
+			public FileVisitResult visitFileFailed(Path file, IOException e) {
+				log.warning("Watch failed, ignoring: " + file.toString() + " - " + e.getMessage());
+				return FileVisitResult.CONTINUE;
+			}
 		});
 	}
 
