@@ -5,8 +5,8 @@ final class Version {
 	static final String COPYRIGHT = "By: He Xian Copyright (c) 2018-2019";
 	private static final int MAJOR = 0;
 	private static final int MINOR = 9;
-	private static final int REVISION = 0;
-	private static final String TAG = "beta";
+	private static final int REVISION = 1;
+	private static final String TAG = "RC";
 
 	static String format() {
 		StringBuilder sb = new StringBuilder();
