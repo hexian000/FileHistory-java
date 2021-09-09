@@ -50,8 +50,8 @@ public class EventFilter implements Consumer<WatcherEvent> {
 			closed = true;
 			timeout.cancel();
 			synchronized (timeout) { // wait until timer task finished
+				fileMap.clear();
 			}
-			fileMap.clear();
 		}
 	}
 }

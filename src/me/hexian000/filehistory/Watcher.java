@@ -18,7 +18,7 @@ public class Watcher extends Thread {
 		this.consumer = consumer;
 		log = logger;
 		watchService = FileSystems.getDefault().newWatchService();
-		Files.walkFileTree(Paths.get(path), new SimpleFileVisitor<Path>() {
+		Files.walkFileTree(Paths.get(path), new SimpleFileVisitor<>() {
 			@Override
 			public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
 				register(dir);
@@ -88,7 +88,7 @@ public class Watcher extends Thread {
 			}
 			if (!watchKey.reset()) {
 				keys.remove(watchKey);
-				log.info("Unwatch: " + dir.toString());
+				log.info("Unwatch: " + dir);
 			}
 		}
 	}
